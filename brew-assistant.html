@@ -135,8 +135,9 @@
     /* drink cards */
     .drink-card {
       background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      box-shadow: var(--shadow); padding: 16px 14px; cursor: pointer;
+      box-shadow: var(--shadow); padding: 16px 14px 16px 20px; cursor: pointer;
       transition: border-color .15s, transform .15s;
+      position: relative; overflow: hidden;
     }
     .drink-card:hover { border-color: var(--accent); }
     .drink-card.open { border-color: var(--fg); }
@@ -1255,9 +1256,18 @@ function buildDrinksGrid() {
     : DRINKS.filter(d => d.cat === activeDrinkCat);
 
   document.getElementById('drinks-grid').innerHTML = list.map((d, i) => {
-    const accent = DRINK_COLORS[d.name] || 'var(--accent)';
+    const total = d.layers.reduce((s, l) => s + l.pct, 0);
+    let cum = 0;
+    const barStops = d.layers.flatMap(l => {
+      const a = (cum / total * 100).toFixed(1);
+      cum += l.pct;
+      const b = (cum / total * 100).toFixed(1);
+      return [`${l.color} ${a}%`, `${l.color} ${b}%`];
+    }).join(', ');
+    const bar = `linear-gradient(to bottom, ${barStops})`;
 
-    return `<div class="drink-card" id="dcard-${i}" onclick="toggleDrink(${i})" style="border-left:3px solid ${accent};">
+    return `<div class="drink-card" id="dcard-${i}" onclick="toggleDrink(${i})">
+      <div style="position:absolute; left:0; top:0; bottom:0; width:5px; background:${bar};"></div>
       <p class="script-head" style="font-size:1.15rem; line-height:1.1; margin-bottom:4px;">${d.name}</p>
       <p style="font-size:9px; font-weight:200; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">${d.serve}</p>
       <p style="font-size:10px; font-weight:300; line-height:1.5; color:var(--muted);">${d.tagline}</p>
