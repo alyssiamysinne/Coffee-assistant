@@ -121,7 +121,14 @@
     .dialin-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
     .dialin-body.open { max-height: 600px; }
 
-    .scroll-row { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    html { scroll-behavior: smooth; }
+    .scroll-row {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+      overscroll-behavior-x: contain;
+    }
     .scroll-row::-webkit-scrollbar { display: none; }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -607,16 +614,16 @@ const METHODS = {
     ],
     bestWith:'Medium roasts work well — the method is intense enough to handle body but clear enough to benefit from some sweetness and complexity. Classic blends often include cardamom in Middle Eastern traditions. Ethiopian, Yemeni, and Turkish single origins are especially traditional.',
   },
-  'South Indian': {
+  'Indian Filter': {
     cat:'Traditional', ratio:4, grind:'Extra-fine', temp:'~95 °C', time:'15–20 min', espresso:false,
     body:'Very full', clarity:'Low', sensitivity:'Forgiving',
-    description:'South Indian filter coffee (kaapi) is a two-vessel metal filter producing a slow decoction — not drip coffee, but a concentrated liquid blended with hot milk and sugar. Chicory is traditionally added to the blend for body and a distinctive bittersweet note.',
+    description:'Indian filter coffee (kaapi) is a two-vessel metal filter producing a slow decoction — not drip coffee, but a concentrated liquid blended with hot milk and sugar. Chicory is traditionally added to the blend for body and a distinctive bittersweet note.',
     steps:[
-      { text:'Add coffee blend (often 20–30% chicory) to the upper chamber.', why:'Chicory (Cichorium intybus) adds body, colour, and a slightly bitter caramel note. Traditional South Indian blends are premixed with chicory; adjusting the percentage changes the character of the decoction.' },
+      { text:'Add coffee blend (often 20–30% chicory) to the upper chamber.', why:'Chicory (Cichorium intybus) adds body, colour, and a slightly bitter caramel note. Traditional Indian filter blends are premixed with chicory; adjusting the percentage changes the character of the decoction.' },
       { text:'Tamp firmly; press the disc firmly onto the grounds.', why:'The metal pressing disc applies even pressure across the bed, slowing the decoction drip rate. Inconsistent tamping = uneven drip. Tight pressure = slower, more concentrated decoction.' },
       { text:'Pour near-boiling water over the grounds; place the lid.', why:'Near-boiling water (95 °C) is needed to percolate slowly through the dense, fine bed. The lid traps steam and keeps the upper chamber warm for the duration of the drip.' },
       { text:'Wait 15–20 min for the decoction to drip through.', why:'This is a slow extraction by design. The drip rate is controlled by the tamp and grind — if your decoction drips in under 10 min, tamp harder or grind finer. Over 25 min, loosen slightly.' },
-      { text:'Mix 1 part decoction with 3 parts boiled milk. Sweeten to taste.', why:'Traditional kaapi is served in a tumbler and davara set — poured back and forth to cool and aerate. The 1:3 ratio is traditional; adjust to taste. Unsweetened kaapi is uncommon in South India.' },
+      { text:'Mix 1 part decoction with 3 parts boiled milk. Sweeten to taste.', why:'Traditional kaapi is served in a tumbler and davara set — poured back and forth to cool and aerate. The 1:3 ratio is traditional; adjust to taste. Unsweetened kaapi is uncommon in India.' },
     ],
     dialIn:[
       'Drip too fast (< 10 min)? Tamp harder, grind finer, or increase chicory percentage.',
