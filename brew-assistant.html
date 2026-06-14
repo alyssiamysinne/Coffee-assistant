@@ -142,16 +142,6 @@
     .drink-card.open { border-color: var(--fg); }
     .drink-recipe { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
     .drink-recipe.open { max-height: 500px; }
-    .cup-vis {
-      width: 48px; height: 70px; border-radius: 0 0 10px 10px; overflow: hidden;
-      border: 1px solid var(--border);
-      margin: 0 auto 12px; position: relative;
-    }
-    .cup-vis::after {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,.07) 0%, transparent 55%);
-      pointer-events: none;
-    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
@@ -1217,6 +1207,29 @@ const DRINKS = [
   },
 ];
 
+// ── DRINK COLORS ──────────────────────────────────────────────────────────────
+
+const DRINK_COLORS = {
+  'Espresso':        '#B8896A',
+  'Ristretto':       '#9E7055',
+  'Lungo':           '#C4A07A',
+  'Americano':       '#A8907E',
+  'Long Black':      '#96847A',
+  'Latte':           '#C8AA82',
+  'Cappuccino':      '#D4B88A',
+  'Flat White':      '#BFA078',
+  'Cortado':         '#B08868',
+  'Macchiato':       '#A87850',
+  'Piccolo':         '#C4A470',
+  'Mocha':           '#8A6448',
+  'Iced Latte':      '#A8B8A0',
+  'Iced Americano':  '#8AA090',
+  'Frappuccino':     '#B0A080',
+  'Shakerato':       '#9A8878',
+  'Nitro Cold Brew': '#7A8E80',
+  'Affogato':        '#C4B484',
+};
+
 // ── DRINKS UI ─────────────────────────────────────────────────────────────────
 
 const DRINK_CATS = ['All','Espresso','Milk','Cold'];
@@ -1242,18 +1255,12 @@ function buildDrinksGrid() {
     : DRINKS.filter(d => d.cat === activeDrinkCat);
 
   document.getElementById('drinks-grid').innerHTML = list.map((d, i) => {
-    const totalPct = d.layers.reduce((s, l) => s + l.pct, 0);
-    const stops = d.layers.map((l, idx) => {
-      const mid = (d.layers.slice(0, idx).reduce((s, x) => s + x.pct, 0) + l.pct / 2) / totalPct * 100;
-      return `${l.color} ${mid.toFixed(1)}%`;
-    }).join(', ');
-    const grad = `linear-gradient(to bottom, ${stops})`;
+    const accent = DRINK_COLORS[d.name] || 'var(--accent)';
 
-    return `<div class="drink-card" id="dcard-${i}" onclick="toggleDrink(${i})">
-      <div class="cup-vis" style="background:${grad};"></div>
-      <p class="script-head" style="font-size:1.15rem; text-align:center; line-height:1.1; margin-bottom:4px;">${d.name}</p>
-      <p style="font-size:9px; font-weight:200; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); text-align:center; margin-bottom:6px;">${d.serve}</p>
-      <p style="font-size:10px; font-weight:300; line-height:1.5; color:var(--muted); text-align:center;">${d.tagline}</p>
+    return `<div class="drink-card" id="dcard-${i}" onclick="toggleDrink(${i})" style="border-left:3px solid ${accent};">
+      <p class="script-head" style="font-size:1.15rem; line-height:1.1; margin-bottom:4px;">${d.name}</p>
+      <p style="font-size:9px; font-weight:200; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">${d.serve}</p>
+      <p style="font-size:10px; font-weight:300; line-height:1.5; color:var(--muted);">${d.tagline}</p>
       <div class="drink-recipe" id="drecipe-${i}">
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
           <p style="font-size:9px; font-weight:200; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Recipe</p>
