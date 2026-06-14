@@ -126,10 +126,27 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      scroll-behavior: smooth;
       overscroll-behavior-x: contain;
+      cursor: grab;
     }
+    .scroll-row.dragging { cursor: grabbing; user-select: none; }
     .scroll-row::-webkit-scrollbar { display: none; }
+
+    /* drink cards */
+    .drink-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: var(--shadow); padding: 16px 14px; cursor: pointer;
+      transition: border-color .15s, transform .15s;
+    }
+    .drink-card:hover { border-color: var(--accent); }
+    .drink-card.open { border-color: var(--fg); }
+    .drink-recipe { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .drink-recipe.open { max-height: 500px; }
+    .cup-vis {
+      width: 42px; height: 64px; border-radius: 0 0 8px 8px; overflow: hidden;
+      border: 1px solid var(--border); display: flex; flex-direction: column-reverse;
+      margin: 0 auto 10px;
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
@@ -146,9 +163,10 @@
 
 <div style="max-width:640px; margin:0 auto; padding:0 20px; border-bottom:1px solid var(--border);">
   <nav role="tablist" aria-label="Modules" style="display:flex;">
-    <button role="tab" id="tab-brew" aria-selected="true"  aria-controls="panel-brew" class="tab-btn" onclick="switchTab('brew')">Brew</button>
-    <button role="tab" id="tab-fix"  aria-selected="false" aria-controls="panel-fix"  class="tab-btn" onclick="switchTab('fix')">Fix</button>
-    <button role="tab" id="tab-ey"   aria-selected="false" aria-controls="panel-ey"   class="tab-btn" onclick="switchTab('ey')">Measure</button>
+    <button role="tab" id="tab-brew"    aria-selected="true"  aria-controls="panel-brew"    class="tab-btn" onclick="switchTab('brew')">Brew</button>
+    <button role="tab" id="tab-fix"     aria-selected="false" aria-controls="panel-fix"     class="tab-btn" onclick="switchTab('fix')">Fix</button>
+    <button role="tab" id="tab-ey"      aria-selected="false" aria-controls="panel-ey"      class="tab-btn" onclick="switchTab('ey')">Measure</button>
+    <button role="tab" id="tab-drinks"  aria-selected="false" aria-controls="panel-drinks"  class="tab-btn" onclick="switchTab('drinks')">Drinks</button>
   </nav>
 </div>
 
@@ -404,6 +422,22 @@
   <p style="font-size:9px; font-weight:200; letter-spacing:.1em; color:var(--muted); text-align:center; margin-top:16px; line-height:2.2;">
     SCA Golden Cup Standards · EY% = TDS% × beverage mass ÷ coffee dose
   </p>
+</div>
+
+<!-- ── DRINKS ─────────────────────────────────────────────────────────────── -->
+<div role="tabpanel" id="panel-drinks" aria-labelledby="tab-drinks">
+  <div style="margin-bottom:24px;">
+    <h2 class="script-head" style="font-size:2.2rem; margin-bottom:6px;">Drinks Menu</h2>
+    <p style="font-size:12px; font-weight:200; letter-spacing:.06em; color:var(--muted);">Tap any drink to see the recipe.</p>
+  </div>
+
+  <!-- Category filter -->
+  <div class="scroll-row" style="margin-bottom:20px;">
+    <div id="drinks-cats" style="display:inline-flex; gap:6px; padding-bottom:2px;"></div>
+  </div>
+
+  <!-- Cards grid -->
+  <div id="drinks-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
 </div>
 
 </main>
@@ -723,7 +757,7 @@ let dialinOpen   = false;
 // ── TABS ──────────────────────────────────────────────────────────────────────
 
 function switchTab(id) {
-  ['brew','fix','ey'].forEach(t => {
+  ['brew','fix','ey','drinks'].forEach(t => {
     document.getElementById('tab-' + t).setAttribute('aria-selected', t === id);
     document.getElementById('panel-' + t).classList.toggle('active', t === id);
   });
@@ -918,12 +952,380 @@ function calcEY() {
   }
 }
 
+// ── DRINKS DATA ───────────────────────────────────────────────────────────────
+
+const DRINKS = [
+  // ── Espresso ──
+  { name:'Espresso', cat:'Espresso',
+    tagline:'Pure concentrated coffee — the foundation of every espresso drink.',
+    ratio:'1 : 2', serve:'Hot · 30–40 ml',
+    layers:[
+      { label:'Crema',    pct:18, color:'#7A4820' },
+      { label:'Espresso', pct:82, color:'#180C06' },
+    ],
+    steps:[
+      'Dose 18–21 g, grind fine.',
+      'Extract 36–42 g yield in 25–30 s at 93 °C.',
+      'Serve immediately in a pre-warmed 60 ml cup.',
+    ],
+  },
+  { name:'Ristretto', cat:'Espresso',
+    tagline:'Short, sweet, intense. Half the yield of an espresso — maximum sweetness, minimum bitterness.',
+    ratio:'1 : 1', serve:'Hot · 15–20 ml',
+    layers:[
+      { label:'Crema',     pct:22, color:'#7A4820' },
+      { label:'Ristretto', pct:78, color:'#0F0704' },
+    ],
+    steps:[
+      'Dose 18–21 g, grind 1–2 clicks finer than your espresso setting.',
+      'Stop extraction at 18–21 g yield — around 20–25 s.',
+      'Syrupy, fruit-forward, no bitterness. Serve in a pre-warmed 30 ml cup.',
+    ],
+  },
+  { name:'Lungo', cat:'Espresso',
+    tagline:'Long pull — more water, more caffeine, more bitter. The Italian breakfast shot.',
+    ratio:'1 : 3', serve:'Hot · 60–90 ml',
+    layers:[
+      { label:'Crema', pct:10, color:'#7A4820' },
+      { label:'Lungo', pct:90, color:'#251408' },
+    ],
+    steps:[
+      'Dose 18–21 g, grind 1 click coarser than espresso.',
+      'Let extraction run to 60–70 g yield in 35–45 s.',
+      'More bitter and more caffeine than a standard espresso.',
+    ],
+  },
+  { name:'Americano', cat:'Espresso',
+    tagline:'Espresso diluted with hot water — filter-coffee strength with espresso character.',
+    ratio:'1 : 4', serve:'Hot · 180–240 ml',
+    layers:[
+      { label:'Espresso',  pct:22, color:'#180C06' },
+      { label:'Hot water', pct:78, color:'#2C180E' },
+    ],
+    steps:[
+      'Pour 120–180 ml hot water into a pre-warmed cup.',
+      'Pull a double espresso (36–42 g) over the water.',
+      'Espresso over water preserves crema on the surface.',
+    ],
+  },
+  { name:'Long Black', cat:'Espresso',
+    tagline:'The Australian/NZ Americano — espresso pulled through hot water, crema intact.',
+    ratio:'1 : 3', serve:'Hot · 150–180 ml',
+    layers:[
+      { label:'Crema',     pct:14, color:'#7A4820' },
+      { label:'Espresso',  pct:26, color:'#180C06' },
+      { label:'Hot water', pct:60, color:'#2C180E' },
+    ],
+    steps:[
+      'Add 100–120 ml hot (not boiling) water to a pre-warmed cup.',
+      'Pull a double espresso directly into the water.',
+      'The crema floats clean on top — do not stir.',
+    ],
+  },
+  // ── Milk ──
+  { name:'Latte', cat:'Milk',
+    tagline:'The most ordered café drink — espresso with abundant steamed milk and a thin foam layer.',
+    ratio:'1 : 6', serve:'Hot · 240–360 ml',
+    layers:[
+      { label:'Microfoam',    pct:10, color:'#DDD8C8' },
+      { label:'Steamed milk', pct:68, color:'#B8A890' },
+      { label:'Espresso',     pct:22, color:'#180C06' },
+    ],
+    steps:[
+      'Pull a double espresso into a 240–360 ml cup.',
+      'Steam milk to 60–65 °C — thin, velvety microfoam, no large bubbles.',
+      'Pour steamed milk low over the espresso, tilt to float foam on top.',
+      'Finish with latte art for presentation.',
+    ],
+  },
+  { name:'Cappuccino', cat:'Milk',
+    tagline:'The classic third — equal parts espresso, steamed milk, and foam.',
+    ratio:'1 : 1 : 1', serve:'Hot · 150–180 ml',
+    layers:[
+      { label:'Foam',         pct:34, color:'#D8D3C3' },
+      { label:'Steamed milk', pct:33, color:'#B8A890' },
+      { label:'Espresso',     pct:33, color:'#180C06' },
+    ],
+    steps:[
+      'Pull a double espresso into a pre-warmed 150–180 ml cup.',
+      'Steam milk to 60–65 °C with a thick, airy foam (2–3 cm head).',
+      'Pour milk then spoon foam on top generously.',
+      'Dry cap = more foam; wet cap = more milk. Both are correct.',
+    ],
+  },
+  { name:'Flat White', cat:'Milk',
+    tagline:'Ristretto-based, velvety microfoam only — small, intense, silky.',
+    ratio:'2 : 3', serve:'Hot · 150–165 ml',
+    layers:[
+      { label:'Microfoam (thin)', pct:8,  color:'#DDD8C8' },
+      { label:'Steamed milk',     pct:60, color:'#B8A890' },
+      { label:'Ristretto',        pct:32, color:'#0F0704' },
+    ],
+    steps:[
+      'Pull a double ristretto (28–30 g yield) into a 150 ml cup.',
+      'Steam milk to 60–65 °C — glossy, paint-like microfoam, no thick layer.',
+      'Pour close to the surface for a silky, integrated texture.',
+      'The ristretto base stays sweet through the milk.',
+    ],
+  },
+  { name:'Cortado', cat:'Milk',
+    tagline:'Espresso "cut" with equal warm milk — no foam, just balance.',
+    ratio:'1 : 1', serve:'Hot · 60–90 ml',
+    layers:[
+      { label:'Milk',     pct:50, color:'#B8A890' },
+      { label:'Espresso', pct:50, color:'#180C06' },
+    ],
+    steps:[
+      'Pull a double espresso into a 90 ml glass.',
+      'Add equal amount of warm steamed milk — no frothing, just heated.',
+      'The milk softens acidity without masking the espresso\'s character.',
+    ],
+  },
+  { name:'Macchiato', cat:'Milk',
+    tagline:'Espresso "stained" with just a spoonful of milk foam.',
+    ratio:'10 : 1', serve:'Hot · 35–45 ml',
+    layers:[
+      { label:'Foam dot', pct:22, color:'#D8D3C3' },
+      { label:'Espresso', pct:78, color:'#180C06' },
+    ],
+    steps:[
+      'Pull a single or double espresso.',
+      'Spoon a small dollop of dense foam on top.',
+      'This is a marker — just enough milk to soften the first sip.',
+    ],
+  },
+  { name:'Piccolo', cat:'Milk',
+    tagline:'A latte in miniature — ristretto with steamed milk in a small 90 ml glass.',
+    ratio:'1 : 2', serve:'Hot · 90 ml',
+    layers:[
+      { label:'Microfoam',    pct:12, color:'#DDD8C8' },
+      { label:'Steamed milk', pct:55, color:'#B8A890' },
+      { label:'Ristretto',    pct:33, color:'#0F0704' },
+    ],
+    steps:[
+      'Pull a single ristretto into a 90 ml demitasse or small latte glass.',
+      'Steam a small portion of milk with thin microfoam.',
+      'Fill to the top — ristretto sweetness shines through the milk.',
+    ],
+  },
+  { name:'Mocha', cat:'Milk',
+    tagline:'Espresso meets chocolate — indulgent, rich, a café classic.',
+    ratio:'Varies', serve:'Hot · 240–360 ml',
+    layers:[
+      { label:'Whip / foam',  pct:12, color:'#DDD8C8' },
+      { label:'Steamed milk', pct:55, color:'#B8A890' },
+      { label:'Chocolate',    pct:11, color:'#3D1A0A' },
+      { label:'Espresso',     pct:22, color:'#180C06' },
+    ],
+    steps:[
+      'Add 20–30 ml chocolate sauce (or 2 tbsp cocoa + sugar) to the cup.',
+      'Pull a double espresso over the chocolate and mix.',
+      'Steam milk to 60–65 °C; pour over the espresso-chocolate base.',
+      'Top with whipped cream or foam. Chocolate drizzle optional.',
+    ],
+  },
+  // ── Cold ──
+  { name:'Iced Latte', cat:'Cold',
+    tagline:'Espresso over ice and cold milk — the everyday cold coffee.',
+    ratio:'1 : 4', serve:'Cold · 350–470 ml',
+    layers:[
+      { label:'Espresso',   pct:20, color:'#180C06' },
+      { label:'Cold milk',  pct:48, color:'#9A8E7A' },
+      { label:'Ice',        pct:32, color:'#5A6B5A' },
+    ],
+    steps:[
+      'Fill a tall glass with ice.',
+      'Add 120–180 ml cold milk over the ice.',
+      'Pull a double espresso and pour over the milk — it layers beautifully.',
+      'Stir before drinking. Add syrup to the espresso first for even sweetness.',
+    ],
+  },
+  { name:'Iced Americano', cat:'Cold',
+    tagline:'Espresso over cold water and ice — clean and refreshing.',
+    ratio:'1 : 4', serve:'Cold · 300–420 ml',
+    layers:[
+      { label:'Espresso',   pct:20, color:'#180C06' },
+      { label:'Cold water', pct:45, color:'#3A4A3A' },
+      { label:'Ice',        pct:35, color:'#5A6B5A' },
+    ],
+    steps:[
+      'Fill glass with ice, add 150–200 ml cold water.',
+      'Pull a double espresso directly over the water and ice.',
+      'Do not stir — let the crema float. Stir at the table.',
+    ],
+  },
+  { name:'Frappuccino', cat:'Cold',
+    tagline:'Blended frozen coffee — creamy, sweet, infinitely customisable.',
+    ratio:'By recipe', serve:'Frozen · 350–470 ml',
+    layers:[
+      { label:'Whipped cream',    pct:14, color:'#DDD8C8' },
+      { label:'Blended ice base', pct:86, color:'#7A5A40' },
+    ],
+    steps:[
+      'Combine 2 shots espresso (or 120 ml cold brew) with 180 ml whole milk.',
+      'Add 200 g ice and 2–3 tbsp simple syrup or flavour sauce.',
+      'Blend on high until smooth and thick — no ice chunks.',
+      'Pour into a chilled cup. Top with whipped cream and drizzle.',
+    ],
+  },
+  { name:'Shakerato', cat:'Cold',
+    tagline:'Italian iced espresso — shaken to a cold, silky froth.',
+    ratio:'1 : 1', serve:'Cold · 80–100 ml',
+    layers:[
+      { label:'Cold foam',      pct:30, color:'#A89070' },
+      { label:'Chilled espresso', pct:70, color:'#281608' },
+    ],
+    steps:[
+      'Pull a double espresso; dissolve 1–2 tsp sugar into it while hot.',
+      'Pour into a cocktail shaker with a large handful of ice.',
+      'Shake hard for 12–15 s until very cold and frothy.',
+      'Strain into a chilled martini or coupe glass — thick cold foam forms on top.',
+    ],
+  },
+  { name:'Nitro Cold Brew', cat:'Cold',
+    tagline:'Cold brew infused with nitrogen — creamy, foamy, no milk required.',
+    ratio:'Concentrate', serve:'Cold · 240–350 ml',
+    layers:[
+      { label:'Nitrogen head',  pct:14, color:'#6A7A6A' },
+      { label:'Nitro cold brew', pct:86, color:'#181E18' },
+    ],
+    steps:[
+      'Brew cold brew concentrate at 1:4 ratio, steep 12–18 h.',
+      'Charge with nitrogen via a whipped cream dispenser + N₂ charger, or use a nitro tap.',
+      'Pour slowly down the side of the glass — do not stir.',
+      'The nitrogen creates a cascading pour and a thick, cream-like head.',
+    ],
+  },
+  { name:'Affogato', cat:'Cold',
+    tagline:'Espresso "drowned" over vanilla ice cream — dessert and coffee in one.',
+    ratio:'1 : 1', serve:'Cold · 120 ml',
+    layers:[
+      { label:'Espresso',  pct:40, color:'#180C06' },
+      { label:'Ice cream', pct:60, color:'#C4B890' },
+    ],
+    steps:[
+      'Scoop 1–2 balls of vanilla gelato into a chilled bowl or wide glass.',
+      'Pull a single or double espresso.',
+      'Pour the hot espresso directly over the ice cream at the table.',
+      'Eat immediately — the contrast of hot espresso and cold gelato is everything.',
+    ],
+  },
+];
+
+// ── DRINKS UI ─────────────────────────────────────────────────────────────────
+
+const DRINK_CATS = ['All','Espresso','Milk','Cold'];
+let activeDrinkCat = 'All';
+let openDrinkCard  = null;
+
+function buildDrinkCats() {
+  document.getElementById('drinks-cats').innerHTML = DRINK_CATS.map(c =>
+    `<button class="cat-tab${c === activeDrinkCat ? ' active' : ''}" onclick="selectDrinkCat('${c}')">${c}</button>`
+  ).join('');
+}
+
+function selectDrinkCat(cat) {
+  activeDrinkCat = cat;
+  openDrinkCard  = null;
+  buildDrinkCats();
+  buildDrinksGrid();
+}
+
+function buildDrinksGrid() {
+  const list = activeDrinkCat === 'All'
+    ? DRINKS
+    : DRINKS.filter(d => d.cat === activeDrinkCat);
+
+  document.getElementById('drinks-grid').innerHTML = list.map((d, i) => {
+    const totalPct = d.layers.reduce((s, l) => s + l.pct, 0);
+    const layersHtml = d.layers.map(l => {
+      const h = (l.pct / totalPct * 62).toFixed(1);
+      return `<div style="height:${h}px; background:${l.color}; flex-shrink:0;" title="${l.label}"></div>`;
+    }).join('');
+
+    return `<div class="drink-card" id="dcard-${i}" onclick="toggleDrink(${i})">
+      <div class="cup-vis">${layersHtml}</div>
+      <p class="script-head" style="font-size:1.15rem; text-align:center; line-height:1.1; margin-bottom:4px;">${d.name}</p>
+      <p style="font-size:9px; font-weight:200; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); text-align:center; margin-bottom:6px;">${d.serve}</p>
+      <p style="font-size:10px; font-weight:300; line-height:1.5; color:var(--muted); text-align:center;">${d.tagline}</p>
+      <div class="drink-recipe" id="drecipe-${i}">
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+          <p style="font-size:9px; font-weight:200; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Recipe</p>
+          <ol style="padding:0; list-style:none; display:flex; flex-direction:column; gap:7px;">
+            ${d.steps.map((s, si) =>
+              `<li style="display:flex; gap:8px; font-size:11px; font-weight:300; line-height:1.55; color:var(--fg);">
+                <span style="font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted); flex-shrink:0; margin-top:1px;">${String(si+1).padStart(2,'0')}</span>
+                <span>${s}</span>
+              </li>`
+            ).join('')}
+          </ol>
+          <div style="display:flex; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid var(--border);">
+            <span style="font-size:9px; font-weight:200; letter-spacing:.12em; text-transform:uppercase; color:var(--muted);">Ratio</span>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:300; color:var(--fg);">${d.ratio}</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDrink(i) {
+  const card    = document.getElementById('dcard-' + i);
+  const recipe  = document.getElementById('drecipe-' + i);
+  const isOpen  = recipe.classList.contains('open');
+
+  // close previous
+  if (openDrinkCard !== null && openDrinkCard !== i) {
+    document.getElementById('drecipe-' + openDrinkCard).classList.remove('open');
+    document.getElementById('dcard-'   + openDrinkCard).classList.remove('open');
+  }
+
+  recipe.classList.toggle('open', !isOpen);
+  card.classList.toggle('open', !isOpen);
+  openDrinkCard = isOpen ? null : i;
+}
+
+// ── MOMENTUM SCROLL ───────────────────────────────────────────────────────────
+
+function addMomentumScroll(el) {
+  let vel = 0, lastX = 0, dragging = false, rafId;
+
+  el.addEventListener('mousedown', e => {
+    dragging = true; lastX = e.clientX; vel = 0;
+    el.classList.add('dragging');
+    cancelAnimationFrame(rafId);
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    coast();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    e.preventDefault();
+    const dx = e.clientX - lastX;
+    vel = dx * 0.8 + vel * 0.2; // smooth velocity
+    el.scrollLeft -= dx;
+    lastX = e.clientX;
+  });
+  function coast() {
+    if (Math.abs(vel) < 0.4) return;
+    vel *= 0.92;
+    el.scrollLeft -= vel;
+    rafId = requestAnimationFrame(coast);
+  }
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 
 buildCatTabs();
 buildMethodChips();
 selectMethod('V60');
 buildSymptomChips();
+buildDrinkCats();
+buildDrinksGrid();
+document.querySelectorAll('.scroll-row').forEach(addMomentumScroll);
 </script>
 </body>
 </html>
