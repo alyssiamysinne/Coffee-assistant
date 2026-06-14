@@ -143,9 +143,14 @@
     .drink-recipe { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
     .drink-recipe.open { max-height: 500px; }
     .cup-vis {
-      width: 42px; height: 64px; border-radius: 0 0 8px 8px; overflow: hidden;
-      border: 1px solid var(--border); display: flex; flex-direction: column-reverse;
-      margin: 0 auto 10px;
+      width: 48px; height: 70px; border-radius: 0 0 10px 10px; overflow: hidden;
+      border: 1px solid var(--border);
+      margin: 0 auto 12px; position: relative;
+    }
+    .cup-vis::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.07) 0%, transparent 55%);
+      pointer-events: none;
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -1238,13 +1243,14 @@ function buildDrinksGrid() {
 
   document.getElementById('drinks-grid').innerHTML = list.map((d, i) => {
     const totalPct = d.layers.reduce((s, l) => s + l.pct, 0);
-    const layersHtml = d.layers.map(l => {
-      const h = (l.pct / totalPct * 62).toFixed(1);
-      return `<div style="height:${h}px; background:${l.color}; flex-shrink:0;" title="${l.label}"></div>`;
-    }).join('');
+    const stops = d.layers.map((l, idx) => {
+      const mid = (d.layers.slice(0, idx).reduce((s, x) => s + x.pct, 0) + l.pct / 2) / totalPct * 100;
+      return `${l.color} ${mid.toFixed(1)}%`;
+    }).join(', ');
+    const grad = `linear-gradient(to bottom, ${stops})`;
 
     return `<div class="drink-card" id="dcard-${i}" onclick="toggleDrink(${i})">
-      <div class="cup-vis">${layersHtml}</div>
+      <div class="cup-vis" style="background:${grad};"></div>
       <p class="script-head" style="font-size:1.15rem; text-align:center; line-height:1.1; margin-bottom:4px;">${d.name}</p>
       <p style="font-size:9px; font-weight:200; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); text-align:center; margin-bottom:6px;">${d.serve}</p>
       <p style="font-size:10px; font-weight:300; line-height:1.5; color:var(--muted); text-align:center;">${d.tagline}</p>
